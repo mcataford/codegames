@@ -36,4 +36,6 @@ jobs:
           path: .yarn
           key: ${{ runner.os }}-${{ hashFiles( 'yarn.lock' ) }}
       - name: Lint
-        run: yarn lint
+        run: |
+          yarn
+          yarn lint

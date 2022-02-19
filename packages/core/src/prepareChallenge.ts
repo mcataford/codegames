@@ -18,7 +18,7 @@ async function prepareChallenge(
 ): Promise<void> {
     const [repoOwner, repoName] = repo.split('/')
 
-    const pattern = /^(I|i) challenge (?<other>[A-Za-z0-9-]+)$/
+    const pattern = /^(I|i) challenge (?<other>[A-Za-z0-9-/]+)$/
     const match = challengeComment.match(pattern)?.groups
 
     if (!match?.other) throw Error('Instructions unclear. >:(')

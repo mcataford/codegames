@@ -1,6 +1,7 @@
 # Internal artifacts
 summary.json
 challengeContext.json
+challenge.json
 
 # Yarn
 .pnp.*

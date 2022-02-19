@@ -30,6 +30,8 @@ jobs:
       RUNNER_BRANCH: 'proof-of-concept'
     steps:
       - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
       - run: npm install -g yarn
       - uses: actions/setup-node@v2
         with:

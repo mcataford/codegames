@@ -27,7 +27,7 @@ jobs:
     name: Let's play!
     needs: prepare
     env:
-      RUNNER_BRANCH: 'proof-of-concept'
+      RUNNER_BRANCH: 'feat/mvp'
     steps:
       - uses: actions/checkout@v2
         with:

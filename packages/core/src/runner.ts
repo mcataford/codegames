@@ -9,7 +9,7 @@ import {
 import { Context, RunnableConfig } from './types'
 
 const GAME_ROOT = './branches/game'
-const P1_ROOT = './branches/player1'
+const P1_ROOT = '.'
 const P2_ROOT = './branches/player2'
 
 /*
@@ -31,7 +31,6 @@ async function run(challengeContextPath: any) {
 
     await Promise.all([
         collectBranch(context.runnerBranch, GAME_ROOT),
-        collectBranch(context.challengerBranch, P1_ROOT),
         collectBranch(context.challengeeBranch, P2_ROOT),
     ])
 

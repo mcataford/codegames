@@ -9,7 +9,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Prepare
     steps:
-      - run: npm install -g yarn
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
@@ -25,6 +24,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     name: Lint
+    needs: [prepare]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
@@ -35,8 +35,5 @@ jobs:
         with:
           path: .yarn
           key: ${{ runner.os }}-${{ hashFiles( 'yarn.lock' ) }}
-      - name: Setup dependencies
-        if: steps.dep-cache.outputs.cache-hit != 'true'
-        run: yarn
       - name: Lint
         run: yarn lint

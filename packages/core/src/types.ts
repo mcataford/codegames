@@ -12,6 +12,13 @@ export interface GameDefinition {
     runnerType: RunnerType
 }
 
+export interface GitContext {
+    repoName: string
+    repoOwner: string
+    pullNumber: number
+    commentId?: number
+}
+
 export interface Context {
     repoName: string
     repoOwner: string

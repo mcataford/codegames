@@ -1,13 +1,17 @@
 import gamesManifest from '@codegames/games'
 
 import {
+    ContextualizedError,
     getBranchDetails,
     getPullDetails,
     upsertIssueComment,
     writeJSON,
 } from './utils'
-import { Context, GameManifest } from './types'
+import { Context, GameManifest, GitContext } from './types'
 
+const FAILED_TO_PARSE_ERR =
+    'Failed to parse challenge. The expected format is "I challenge `branch` at `game`.".'
+const INVALID_GAME_ERR = 'Unrecognized game identifier.'
 /*
  * prepareChallenge gathers basic information about the challenge
  * and commits it to disk.
@@ -24,12 +28,21 @@ async function prepareChallenge(
         /^(I|i) challenge (?<other>[A-Za-z0-9-/]+) at (?<game>([A-Za-z0-9-]+))$/
     const match = challengeComment.match(pattern)?.groups
 
-    if (!match?.other || !match?.game) throw Error('Instructions unclear. >:(')
+    if (!match?.other || !match?.game)
+        throw new ContextualizedError<GitContext>(FAILED_TO_PARSE_ERR, {
+            repoOwner,
+            repoName,
+            pullNumber,
+        })
 
     const gameDetails = (gamesManifest as GameManifest)[match.game]
 
     if (!gameDetails)
-        throw Error(`Invalid game, no registered game for "${match.game}"`)
+        throw new ContextualizedError(INVALID_GAME_ERR, {
+            repoOwner,
+            repoName,
+            pullNumber,
+        })
 
     const [challengerDetails, challengeeDetails] = await Promise.all([
         getPullDetails(repoOwner, repoName, pullNumber),
@@ -57,7 +70,12 @@ async function prepareChallenge(
         game: match.game,
         gameDetails,
     }
-    const commentId = await upsertIssueComment(challengeData, message)
+    const commentId = await upsertIssueComment(
+        repoOwner,
+        repoName,
+        pullNumber,
+        message,
+    )
 
     challengeData.commentId = commentId
 
@@ -74,8 +92,15 @@ prepareChallenge(
     runnerBranch,
     Number(currentBranch),
     challengeComment,
-).catch((e) => {
+).catch(async (e) => {
     console.error('Could not parse challenge!')
     console.error(e)
+    await upsertIssueComment(
+        e.extra.repoOwner,
+        e.extra.repoName,
+        e.extra.pullNumber,
+        `💥 Oh no! ${e.message}`,
+    )
+
     process.exit(1)
 })

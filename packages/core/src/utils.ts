@@ -22,6 +22,15 @@ function getOctokit() {
     return octoClient
 }
 
+export class ContextualizedError<Extra> extends Error {
+    extra: Extra
+
+    constructor(message: string, extra: Extra) {
+        super(message)
+        this.extra = extra
+    }
+}
+
 export async function getPullDetails(
     repoOwner: string,
     repoName: string,
@@ -66,37 +75,28 @@ export async function getIssueComment(context: Context): Promise<string> {
 }
 
 export async function upsertIssueComment(
-    context: Context,
+    repoOwner: string,
+    repoName: string,
+    pullNumber: number,
     body: string,
+    commentId?: number,
 ): Promise<number> {
     const client = getOctokit()
 
-    if (context.commentId) {
-        await client.request(
-            `PATCH /repos/${context.repoOwner}/${context.repoName}/issues/comments/${context.commentId}`,
-            {
-                owner: context.repoOwner,
-                repo: context.repoName,
-                issue_number: context.pullNumber,
-                body,
-            },
-        )
-
-        return context.commentId
-    } else {
-        const response = await client.request(
-            `POST /repos/${context.repoOwner}/${context.repoName}/issues/${context.pullNumber}/comments`,
-            {
-                owner: context.repoOwner,
-                repo: context.repoName,
-                issue_number: context.pullNumber,
-                body,
-            },
-        )
-
-        const commentId = response.data.id
-        return commentId
+    const payload = {
+        owner: repoOwner,
+        repo: repoName,
+        issue_number: pullNumber,
+        body,
     }
+
+    const url = commentId
+        ? `PATCH /repos/${repoOwner}/${repoName}/issues/comments/${commentId}`
+        : `POST /repos/${repoOwner}/${repoName}/issues/${pullNumber}/comments`
+
+    const response = await client.request(url, payload)
+
+    return response.data.id
 }
 
 /*

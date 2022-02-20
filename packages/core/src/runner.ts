@@ -43,7 +43,12 @@ async function run(challengeContextPath: any) {
 
     const fetchStatusUpdate = `${preFetchStatusUpdate}\n:ballot_box_with_check: Fetch players and game`
 
-    await upsertIssueComment(context, fetchStatusUpdate)
+    await upsertIssueComment(
+        context.repoOwner,
+        context.repoName.context.pullNumber,
+        fetchStatusUpdate,
+        context.commentId,
+    )
     /*
      * The runner state is a combination of private and public data.
      */
@@ -149,7 +154,12 @@ async function run(challengeContextPath: any) {
 
     const summaryStatusUpdate = `${preSummaryStatusUpdate}\n:ballot_box_with_check: Run game\n## Game summary\n### ${outcomeMessage}\n\`\`\`\nTurns played: ${summary.turnsPlayed}\n\`\`\``
 
-    await upsertIssueComment(context, summaryStatusUpdate)
+    await upsertIssueComment(
+        context.repoOwner,
+        context.repoName.context.pullNumber,
+        summaryStatusUpdate,
+        context.commentId,
+    )
 
     await writeJSON('./summary.json', summary)
 }

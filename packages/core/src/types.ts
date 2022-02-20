@@ -1,5 +1,5 @@
 export enum RunnerType {
-    node = "node"
+    node = 'node',
 }
 
 export interface GameManifest {
@@ -25,7 +25,6 @@ export interface Context {
     game: string
     gameDetails: GameDefinition
 }
-
 
 export interface RunnableConfig {
     runnerType: 'node'

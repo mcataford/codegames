@@ -1,0 +1,7 @@
+{
+    "number-guessing": {
+        "runnerType": "node",
+        "path": "packages/games/numberGuessing/index.js",
+        "description": "A basic number guessing game."
+    }
+}

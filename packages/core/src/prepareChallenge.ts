@@ -1,10 +1,12 @@
+import gamesManifest from '@codegames/games'
+
 import {
     getBranchDetails,
     getPullDetails,
     upsertIssueComment,
     writeJSON,
 } from './utils'
-import { Context } from './types'
+import { Context, GameManifest } from './types'
 
 /*
  * prepareChallenge gathers basic information about the challenge
@@ -18,10 +20,16 @@ async function prepareChallenge(
 ): Promise<void> {
     const [repoOwner, repoName] = repo.split('/')
 
-    const pattern = /^(I|i) challenge (?<other>[A-Za-z0-9-/]+)$/
+    const pattern =
+        /^(I|i) challenge (?<other>[A-Za-z0-9-/]+) at (?<game>([A-Za-z0-9-]+))$/
     const match = challengeComment.match(pattern)?.groups
 
-    if (!match?.other) throw Error('Instructions unclear. >:(')
+    if (!match?.other || !match?.game) throw Error('Instructions unclear. >:(')
+
+    const gameDetails = (gamesManifest as GameManifest)[match.game]
+
+    if (!gameDetails)
+        throw Error(`Invalid game, no registered game for "${match.game}"`)
 
     const [challengerDetails, challengeeDetails] = await Promise.all([
         getPullDetails(repoOwner, repoName, pullNumber),
@@ -46,6 +54,8 @@ async function prepareChallenge(
         challengerBranch,
         challengee,
         challengeeBranch,
+        game: match.game,
+        gameDetails,
     }
     const commentId = await upsertIssueComment(challengeData, message)
 

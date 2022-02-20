@@ -1,4 +1,0 @@
-{
-    "runnerType": "node",
-    "runnerPath": "packages/games/src/numberGuessing.js"
-}

@@ -1,3 +1,17 @@
+export enum RunnerType {
+    node = "node"
+}
+
+export interface GameManifest {
+    [key: string]: GameDefinition
+}
+
+export interface GameDefinition {
+    description: string
+    path: string
+    runnerType: RunnerType
+}
+
 export interface Context {
     repoName: string
     repoOwner: string
@@ -8,7 +22,10 @@ export interface Context {
     challengee: string
     challengeeBranch: string
     commentId?: number
+    game: string
+    gameDetails: GameDefinition
 }
+
 
 export interface RunnableConfig {
     runnerType: 'node'

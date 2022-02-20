@@ -34,8 +34,7 @@ async function run(challengeContextPath: any) {
         collectBranch(context.challengeeBranch, P2_ROOT),
     ])
 
-    const [runnerConfig, p1Config, p2Config] = await Promise.all([
-        readJSON<RunnableConfig>(`${GAME_ROOT}/runner.config.json`),
+    const [p1Config, p2Config] = await Promise.all([
         readJSON<RunnableConfig>(`${P1_ROOT}/player.config.json`),
         readJSON<RunnableConfig>(`${P2_ROOT}/player.config.json`),
     ])
@@ -63,7 +62,7 @@ async function run(challengeContextPath: any) {
      */
 
     const runnerOutput = await shellExec(
-        `${runnerConfig.runnerType} ${runnerConfig.runnerPath}`,
+        `${context.gameDetails.runnerType} ${context.gameDetails.path}`,
     )
 
     const parsedInitRunnerOut = JSON.parse(runnerOutput.stdout)
@@ -101,8 +100,8 @@ async function run(challengeContextPath: any) {
         console.log(`Turn output: ${turnOutput.stdout}`)
 
         const runnerOutput = await shellExec(
-            `${runnerConfig.runnerType} ${
-                runnerConfig.runnerPath
+            `${context.gameDetails.runnerType} ${
+                context.gameDetails.path
             } ${formatObjectForCLI(
                 runnerState.gameSecrets,
             )} ${formatObjectForCLI(runnerState.gameData)} ${formatObjectForCLI(

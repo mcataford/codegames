@@ -404,6 +404,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@codegames/core@workspace:packages/core"
   dependencies:
+    "@codegames/games": "workspace:packages/games"
     "@octokit/core": ^3.5.1
   languageName: unknown
   linkType: soft

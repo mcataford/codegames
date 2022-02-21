@@ -1,7 +1,13 @@
 {
     "name": "@codegames/core",
+    "scripts": {
+        "build": "tsc --project $PWD/packages/core"
+    },
     "dependencies": {
         "@codegames/games": "workspace:packages/games",
         "@octokit/core": "^3.5.1"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.19"
     }
 }

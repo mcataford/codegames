@@ -10,8 +10,9 @@
   "packageManager": "yarn@3.1.1",
   "scripts": {
     "lint": "eslint **/*.ts",
-    "game:play": "ts-node packages/core/src/runner.ts",
-    "game:prepare": "ts-node packages/core/src/prepareChallenge.ts"
+    "local:play": "ts-node packages/core/src/runner.ts",
+    "local:prepare": "ts-node packages/core/src/prepareChallenge.ts",
+    "build": "yarn workspaces foreach run build"
   },
   "devDependencies": {
     "@tophat/eslint-config": "^2.0.0",
@@ -24,7 +25,6 @@
     "eslint-import-resolver-typescript": "^2.5.0",
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-prettier": "^4.0.0",
-    "jest": "^27.5.1",
     "prettier": "^2.5.1",
     "ts-node": "^10.5.0",
     "typescript": "^4.5.5"

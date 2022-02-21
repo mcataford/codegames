@@ -1,3 +1,6 @@
 {
-    "name": "@codegames/games"
+    "name": "@codegames/games",
+    "scripts": {
+        "build": "tsc --project $PWD/packages/games"
+    }
 }

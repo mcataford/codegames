@@ -43,7 +43,8 @@ jobs:
           key: ${{ runner.os }}-${{hashFiles( 'yarn.lock' )}}
       - run: | 
           yarn
-          yarn game:prepare ${{ github.event.repository.full_name }} ${{ env.RUNNER_BRANCH }} ${{ github.event.issue.number }} "${{ github.event.comment.body }}"
-          yarn game:play ./challengeContext.json
+          yarn build
+          yarn node packages/core/dist/prepareChallenge.js ${{ github.event.repository.full_name }} ${{ env.RUNNER_BRANCH }} ${{ github.event.issue.number }} "${{ github.event.comment.body }}"
+          yarn node packages/core/dist/runner.js ./challengeContext.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

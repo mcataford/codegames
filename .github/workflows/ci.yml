@@ -21,7 +21,7 @@ jobs:
       - name: Setup dependencies
         if: steps.dep-cache.outputs.cache-hit != 'true'
         run: yarn
- typecheck:
+  typecheck:
     runs-on: ubuntu-latest
     name: Lint
     needs: [prepare]

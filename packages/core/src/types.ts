@@ -2,6 +2,11 @@ export enum RunnerType {
     node = 'node',
 }
 
+export enum PlayerLabel {
+    P1 = 'player-1',
+    P2 = 'player-2',
+}
+
 export interface GameManifest {
     [key: string]: GameDefinition
 }
@@ -36,4 +41,8 @@ export interface Context {
 export interface RunnableConfig {
     runnerType: 'node'
     runnerPath: string
+}
+
+export interface PlayerConfigMap {
+    [key: string]: RunnableConfig
 }

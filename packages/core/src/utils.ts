@@ -32,6 +32,31 @@ export class ContextualizedError<Extra> extends Error {
     }
 }
 
+export function setupTimers(): {
+    addMark: (label: string) => void
+    timeBetween: (a: string, b: string) => number | undefined
+} {
+    const marks = new Map<string, BigInt>()
+
+    const addMark = (label: string) => {
+        marks.set(label, process.hrtime.bigint())
+    }
+
+    const timeBetween = (start: string, end: string): number | undefined => {
+        if (!marks.has(start) || !marks.has(end))
+            throw new Error(`Invalid timer marks (${start} > ${end}).`)
+
+        const startMark = marks.get(start)
+        const endMark = marks.get(end)
+
+        return Number(
+            ((Number(endMark) - Number(startMark)) / 10 ** 9).toFixed(3),
+        )
+    }
+
+    return { addMark, timeBetween }
+}
+
 export async function getPullDetails(
     repoOwner: string,
     repoName: string,
@@ -123,12 +148,19 @@ export async function writeJSON(path: string, data: object): Promise<void> {
 export async function runScript(
     runner: string,
     path: string,
-    args?: string[],
+    args?: (string | object)[],
 ): Promise<{
     stdout: string
     stderr: string
 }> {
-    return await execFile(runner, [path, ...(args || [])], {
+    const castedArgs =
+        args?.map((arg: string | object): string => {
+            if (typeof arg === 'object') return JSON.stringify(arg)
+
+            return arg
+        }) ?? []
+
+    return await execFile(runner, [path, ...castedArgs], {
         timeout: EXEC_TIMEOUT,
     })
 }

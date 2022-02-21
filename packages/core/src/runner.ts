@@ -3,38 +3,25 @@ import {
     getIssueComment,
     readJSON,
     runScript,
+    setupTimers,
     upsertIssueComment,
     writeJSON,
 } from './utils'
-import { Context, RunnableConfig } from './types'
+import { Context, PlayerConfigMap, PlayerLabel, RunnableConfig } from './types'
 
 const GAME_ROOT = './branches/game'
 const P1_ROOT = '.'
 const P2_ROOT = './branches/player2'
 
-function setupTimers(): {
-    addMark: (label: string) => void
-    timeBetween: (a: string, b: string) => number | undefined
-} {
-    const marks = new Map<string, BigInt>()
+function determineCurrentPlayer(turnCount: number): PlayerLabel {
+    return turnCount % 2 ? PlayerLabel.P1 : PlayerLabel.P2
+}
 
-    const addMark = (label: string) => {
-        marks.set(label, process.hrtime.bigint())
+function generatePlayerState(currentPlayer: PlayerLabel, state: any): any {
+    return {
+        gameData: state.gameData,
+        stash: state.playerStash[currentPlayer],
     }
-
-    const timeBetween = (start: string, end: string): number | undefined => {
-        if (!marks.has(start) || !marks.has(end))
-            throw new Error(`Invalid timer marks (${start} > ${end}).`)
-
-        const startMark = marks.get(start)
-        const endMark = marks.get(end)
-
-        return Number(
-            ((Number(endMark) - Number(startMark)) / 10 ** 9).toFixed(3),
-        )
-    }
-
-    return { addMark, timeBetween }
 }
 
 /*
@@ -55,6 +42,12 @@ async function run(challengeContextPath: string) {
         readJSON<RunnableConfig>(`${P1_ROOT}/player.config.json`),
         readJSON<RunnableConfig>(`${P2_ROOT}/player.config.json`),
     ])
+
+    const configs: PlayerConfigMap = {
+        [PlayerLabel.P1]: p1Config,
+        [PlayerLabel.P2]: p2Config,
+    }
+
     addMark('post-collect')
     const postFetchCode = timeBetween('pre-collect', 'post-collect')
 
@@ -79,6 +72,7 @@ async function run(challengeContextPath: string) {
         isDone: false,
         gameData: { decision: null },
         gameSecrets: {},
+        playerStash: { [PlayerLabel.P1]: null, [PlayerLabel.P2]: null },
     }
 
     /*
@@ -113,15 +107,20 @@ async function run(challengeContextPath: string) {
          * in runner state.
          */
         runnerState.turn += 1
-        const playerConfig = runnerState.turn % 2 ? p1Config : p2Config
+        const currentPlayer = determineCurrentPlayer(runnerState.turn)
+        const playerConfig = configs[currentPlayer]
         const playerName =
-            runnerState.turn % 2 ? context.challenger : context.challengee
+            currentPlayer === PlayerLabel.P1
+                ? context.challenger
+                : context.challengee
 
         console.group(`Turn ${runnerState.turn}: ${playerName} plays`)
 
+        const playerState = generatePlayerState(currentPlayer, runnerState)
         const turnOutput = await runScript(
             playerConfig.runnerType,
             playerConfig.runnerPath,
+            [playerState],
         )
 
         console.log(`Active player: ${p1Config.runnerPath}`)

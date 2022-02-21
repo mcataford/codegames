@@ -12,7 +12,8 @@
     "lint": "eslint **/*.ts",
     "local:play": "ts-node packages/core/src/runner.ts",
     "local:prepare": "ts-node packages/core/src/prepareChallenge.ts",
-    "build": "yarn workspaces foreach run build"
+    "build": "yarn workspaces foreach run build",
+    "typecheck": "yarn tsc --noEmit"
   },
   "devDependencies": {
     "@tophat/eslint-config": "^2.0.0",

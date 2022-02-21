@@ -2,6 +2,7 @@
 summary.json
 challengeContext.json
 challenge.json
+**packages/**/*.js
 
 # Yarn
 .pnp.*

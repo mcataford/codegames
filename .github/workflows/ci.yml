@@ -23,7 +23,7 @@ jobs:
         run: yarn
   typecheck:
     runs-on: ubuntu-latest
-    name: Lint
+    name: Typecheck
     needs: [prepare]
     steps:
       - uses: actions/checkout@v2

@@ -7,15 +7,9 @@ if (process.argv.length < 4) {
     process.exit(0)
 }
 
-const correct = JSON.parse(
-    Buffer.from(process.argv[2], 'base64').toString('utf8'),
-)
-const state = JSON.parse(
-    Buffer.from(process.argv[3], 'base64').toString('utf8'),
-)
-const guess = JSON.parse(
-    Buffer.from(process.argv[4], 'base64').toString('utf8'),
-)
+const correct = JSON.parse(process.argv[2])
+const state = JSON.parse(process.argv[3])
+const guess = JSON.parse(process.argv[4])
 
 if (correct.correct === guess.guess)
     console.log(

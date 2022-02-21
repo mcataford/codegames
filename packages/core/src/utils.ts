@@ -7,6 +7,7 @@ import { Octokit } from '@octokit/core'
 import { Context } from './types'
 
 const exec = util.promisify(childProcess.exec)
+const execFile = util.promisify(childProcess.execFile)
 
 const EXEC_TIMEOUT = 5000
 
@@ -119,11 +120,17 @@ export async function writeJSON(path: string, data: object): Promise<void> {
 /*
  * Runs a command in shell with predefined options.
  */
-export async function shellExec(command: string): Promise<{
+export async function runScript(
+    runner: string,
+    path: string,
+    args?: string[],
+): Promise<{
     stdout: string
     stderr: string
 }> {
-    return await exec(command, { timeout: EXEC_TIMEOUT })
+    return await execFile(runner, [path, ...(args || [])], {
+        timeout: EXEC_TIMEOUT,
+    })
 }
 
 /*

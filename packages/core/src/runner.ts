@@ -2,7 +2,7 @@ import {
     collectBranch,
     getIssueComment,
     readJSON,
-    shellExec,
+    runScript,
     upsertIssueComment,
     writeJSON,
 } from './utils'
@@ -12,23 +12,40 @@ const GAME_ROOT = './branches/game'
 const P1_ROOT = '.'
 const P2_ROOT = './branches/player2'
 
-/*
- * formatObjectForCLI is a dirty hack to work around JSON.stringify
- * and exec not playing nice together. It ensures that the data
- * can be correctly serialized/deserialized as JSON and passed
- * as a command-line argument to the different actors.
- */
-function formatObjectForCLI(obj: object): string {
-    return Buffer.from(JSON.stringify(obj)).toString('base64')
+function setupTimers(): {
+    addMark: (label: string) => void
+    timeBetween: (a: string, b: string) => number | undefined
+} {
+    const marks = new Map<string, BigInt>()
+
+    const addMark = (label: string) => {
+        marks.set(label, process.hrtime.bigint())
+    }
+
+    const timeBetween = (start: string, end: string): number | undefined => {
+        if (!marks.has(start) || !marks.has(end))
+            throw new Error(`Invalid timer marks (${start} > ${end}).`)
+
+        const startMark = marks.get(start)
+        const endMark = marks.get(end)
+
+        return Number(
+            ((Number(endMark) - Number(startMark)) / 10 ** 9).toFixed(3),
+        )
+    }
+
+    return { addMark, timeBetween }
 }
 
 /*
  * run implements the game loop and manages the higher-level state of
  * the game.
  */
-async function run(challengeContextPath: any) {
+async function run(challengeContextPath: string) {
+    const { addMark, timeBetween } = setupTimers()
     const context = await readJSON<Context>(challengeContextPath)
 
+    addMark('pre-collect')
     await Promise.all([
         collectBranch(context.runnerBranch, GAME_ROOT),
         collectBranch(context.challengeeBranch, P2_ROOT),
@@ -38,14 +55,17 @@ async function run(challengeContextPath: any) {
         readJSON<RunnableConfig>(`${P1_ROOT}/player.config.json`),
         readJSON<RunnableConfig>(`${P2_ROOT}/player.config.json`),
     ])
+    addMark('post-collect')
+    const postFetchCode = timeBetween('pre-collect', 'post-collect')
 
     const preFetchStatusUpdate = await getIssueComment(context)
 
-    const fetchStatusUpdate = `${preFetchStatusUpdate}\n:ballot_box_with_check: Fetch players and game`
+    const fetchStatusUpdate = `${preFetchStatusUpdate}\n:ballot_box_with_check: Fetch players and game branches (${postFetchCode}s)`
 
     await upsertIssueComment(
         context.repoOwner,
-        context.repoName.context.pullNumber,
+        context.repoName,
+        context.pullNumber,
         fetchStatusUpdate,
         context.commentId,
     )
@@ -66,8 +86,9 @@ async function run(challengeContextPath: any) {
      * for initial state setup.
      */
 
-    const runnerOutput = await shellExec(
-        `${context.gameDetails.runnerType} ${context.gameDetails.path}`,
+    const runnerOutput = await runScript(
+        context.gameDetails.runnerType,
+        context.gameDetails.path,
     )
 
     const parsedInitRunnerOut = JSON.parse(runnerOutput.stdout)
@@ -75,6 +96,7 @@ async function run(challengeContextPath: any) {
     runnerState.gameSecrets = parsedInitRunnerOut.gameSecrets ?? {}
     runnerState.gameData = parsedInitRunnerOut.gameData ?? {}
 
+    addMark('game-loop-start')
     while (!runnerState.isDone) {
         /*
          * Each turn starts with the selection of who plays, alternating
@@ -97,21 +119,22 @@ async function run(challengeContextPath: any) {
 
         console.group(`Turn ${runnerState.turn}: ${playerName} plays`)
 
-        const turnOutput = await shellExec(
-            `${playerConfig.runnerType} ${playerConfig.runnerPath}`,
+        const turnOutput = await runScript(
+            playerConfig.runnerType,
+            playerConfig.runnerPath,
         )
 
         console.log(`Active player: ${p1Config.runnerPath}`)
         console.log(`Turn output: ${turnOutput.stdout}`)
 
-        const runnerOutput = await shellExec(
-            `${context.gameDetails.runnerType} ${
-                context.gameDetails.path
-            } ${formatObjectForCLI(
-                runnerState.gameSecrets,
-            )} ${formatObjectForCLI(runnerState.gameData)} ${formatObjectForCLI(
-                JSON.parse(turnOutput.stdout),
-            )}`,
+        const runnerOutput = await runScript(
+            context.gameDetails.runnerType,
+            context.gameDetails.path,
+            [
+                JSON.stringify(runnerState.gameSecrets),
+                JSON.stringify(runnerState.gameData),
+                turnOutput.stdout,
+            ],
         )
 
         const parsedRunnerOut = JSON.parse(runnerOutput.stdout)
@@ -131,6 +154,8 @@ async function run(challengeContextPath: any) {
         console.log(`New game state: ${JSON.stringify(runnerState.gameData)}`)
         console.groupEnd()
     }
+    addMark('game-loop-end')
+    const gameTime = timeBetween('game-loop-start', 'game-loop-end')
 
     let winner
 
@@ -144,6 +169,7 @@ async function run(challengeContextPath: any) {
         turnsPlayed: runnerState.turn,
         outcome: runnerState.outcome,
         winner,
+        gameTime,
     }
 
     const outcomeMessage = winner
@@ -152,11 +178,12 @@ async function run(challengeContextPath: any) {
 
     const preSummaryStatusUpdate = await getIssueComment(context)
 
-    const summaryStatusUpdate = `${preSummaryStatusUpdate}\n:ballot_box_with_check: Run game\n## Game summary\n### ${outcomeMessage}\n\`\`\`\nTurns played: ${summary.turnsPlayed}\n\`\`\``
+    const summaryStatusUpdate = `${preSummaryStatusUpdate}\n:ballot_box_with_check: Run game (${gameTime}s)\n## Game summary\n### ${outcomeMessage}\n\`\`\`\nTurns played: ${summary.turnsPlayed}\n\`\`\``
 
     await upsertIssueComment(
         context.repoOwner,
-        context.repoName.context.pullNumber,
+        context.repoName,
+        context.pullNumber,
         summaryStatusUpdate,
         context.commentId,
     )

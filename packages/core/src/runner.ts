@@ -7,7 +7,14 @@ import {
     upsertIssueComment,
     writeJSON,
 } from './utils'
-import { Context, PlayerConfigMap, PlayerLabel, RunnableConfig } from './types'
+import {
+    Context,
+    PlayerConfigMap,
+    PlayerLabel,
+    PlayerOutput,
+    RunnableConfig,
+    RunnerOutput,
+} from './types'
 
 const GAME_ROOT = './branches/game'
 const P1_ROOT = '.'
@@ -65,12 +72,20 @@ async function run(challengeContextPath: string) {
     /*
      * The runner state is a combination of private and public data.
      */
-    const runnerState = {
+    const runnerState: {
+        turn: number
+        winner: PlayerLabel | null
+        outcome: string | null
+        isDone: boolean
+        gameData: any
+        gameSecrets: any
+        playerStash: any
+    } = {
         turn: 0,
         winner: null,
         outcome: null,
         isDone: false,
-        gameData: { decision: null },
+        gameData: {},
         gameSecrets: {},
         playerStash: { [PlayerLabel.P1]: null, [PlayerLabel.P2]: null },
     }
@@ -85,7 +100,7 @@ async function run(challengeContextPath: string) {
         context.gameDetails.path,
     )
 
-    const parsedInitRunnerOut = JSON.parse(runnerOutput.stdout)
+    const parsedInitRunnerOut: RunnerOutput = JSON.parse(runnerOutput.stdout)
 
     runnerState.gameSecrets = parsedInitRunnerOut.gameSecrets ?? {}
     runnerState.gameData = parsedInitRunnerOut.gameData ?? {}
@@ -117,38 +132,40 @@ async function run(challengeContextPath: string) {
         console.group(`Turn ${runnerState.turn}: ${playerName} plays`)
 
         const playerState = generatePlayerState(currentPlayer, runnerState)
-        const turnOutput = await runScript(
+        const { stdout: playerStdout } = await runScript(
             playerConfig.runnerType,
             playerConfig.runnerPath,
             [playerState],
         )
 
-        console.log(`Active player: ${p1Config.runnerPath}`)
-        console.log(`Turn output: ${turnOutput.stdout}`)
+        const parsedPlayerStdout: PlayerOutput = JSON.parse(playerStdout)
 
-        const runnerOutput = await runScript(
+        // Update the player's stash with the lastest returned version.
+        runnerState.playerStash[currentPlayer] = parsedPlayerStdout.stash
+
+        console.log(`Active player: ${p1Config.runnerPath}`)
+        console.log(`Turn output: ${playerStdout}`)
+
+        const { stdout: runnerStdout } = await runScript(
             context.gameDetails.runnerType,
             context.gameDetails.path,
             [
-                JSON.stringify(runnerState.gameSecrets),
-                JSON.stringify(runnerState.gameData),
-                turnOutput.stdout,
+                runnerState.gameSecrets,
+                runnerState.gameData,
+                parsedPlayerStdout.action,
             ],
         )
 
-        const parsedRunnerOut = JSON.parse(runnerOutput.stdout)
+        const parsedRunnerStdout: RunnerOutput = JSON.parse(runnerStdout)
 
-        runnerState.gameSecrets = {
-            ...runnerState.gameSecrets,
-            ...(parsedRunnerOut.gameSecrets ?? {}),
+        if (parsedRunnerStdout.gameSecrets)
+            runnerState.gameSecrets = parsedRunnerStdout.gameSecrets
+        if (parsedRunnerStdout.gameData)
+            runnerState.gameData = parsedRunnerStdout.gameData
+        if (parsedRunnerStdout.runnerState) {
+            runnerState.isDone = parsedRunnerStdout.runnerState.done
+            runnerState.outcome = parsedRunnerStdout.runnerState.outcome
         }
-        runnerState.gameData = {
-            ...runnerState.gameData,
-            ...(parsedRunnerOut.gameData ?? {}),
-        }
-
-        runnerState.isDone = parsedRunnerOut.done
-        runnerState.outcome = runnerState.gameData.decision
 
         console.log(`New game state: ${JSON.stringify(runnerState.gameData)}`)
         console.groupEnd()

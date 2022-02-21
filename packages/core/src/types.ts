@@ -2,6 +2,27 @@ export enum RunnerType {
     node = 'node',
 }
 
+// FIXME: Dynamic typing using schemas?
+export interface PlayerOutput {
+    // Move coming from the player script.
+    action: any
+    // Data stashed between runs by the player
+    stash: any
+}
+
+// FIXME: Dynamic typing using schemas?
+export interface RunnerOutput {
+    // Secrets stashed by the game runner
+    gameSecrets?: any
+    // Public game state
+    gameData?: any
+    // Runner state
+    runnerState?: {
+        done: boolean
+        outcome: string
+    }
+}
+
 export enum PlayerLabel {
     P1 = 'player-1',
     P2 = 'player-2',

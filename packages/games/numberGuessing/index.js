@@ -13,6 +13,6 @@ const guess = JSON.parse(process.argv[4])
 
 if (correct.correct === guess.guess)
     console.log(
-        JSON.stringify({ done: true, gameSecrets: { decision: 'win' } }),
+        JSON.stringify({ runnerState: { done: true, outcome: 'win' }}),
     )
-else console.log(JSON.stringify({ done: false }))
+else console.log(JSON.stringify({}))

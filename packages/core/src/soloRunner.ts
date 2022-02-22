@@ -93,6 +93,7 @@ async function run(challengeContextPath: string) {
     runnerState.gameData = parsedInitRunnerOut.gameData ?? {}
 
     const playerName = context.challenger
+    const actions = []
     addMark('game-loop-start')
     while (!runnerState.isDone) {
         /*
@@ -131,7 +132,7 @@ async function run(challengeContextPath: string) {
         runnerState.playerStash = parsedPlayerStdout.stash
 
         console.log(`Turn output: ${playerStdout}`)
-
+        actions.push(parsedPlayerStdout.action)
         const { stdout: runnerStdout, stderr } = await runScript(
             context.gameDetails.runnerType,
             context.gameDetails.path,
@@ -185,7 +186,14 @@ async function run(challengeContextPath: string) {
         GAME_OUTCOME_MESSAGES[
             runnerState.outcome as GameOutcomes.WIN | GameOutcomes.TIME_OUT
         ]
-    }\n\`\`\`\nTurns played: ${runnerState.turn}\n\`\`\``
+    }\n\`\`\`\nTurns played: ${
+        runnerState.turn
+    }\n\`\`\`\n<details><summary>Moves</summary>${actions
+        .map(
+            (item: any, index: any) =>
+                `Turn ${index} - ${JSON.stringify(item)}`,
+        )
+        .join('</br>')}</details>`
 
     await upsertIssueComment(
         context.repoOwner,

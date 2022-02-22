@@ -167,8 +167,22 @@ export async function runScript(
         console.groupEnd()
     }
 
+    const forbiddenEnv = /^(GITHUB_.*)$/
+    const sanitizedEnv = Object.entries(process.env).reduce(
+        (
+            newEnv: { [key: string]: string | undefined },
+            [envKey, envValue]: [string, string | undefined],
+        ) => {
+            if (!envKey.match(forbiddenEnv)) newEnv[envKey] = envValue
+
+            return newEnv
+        },
+        {} as { [key: string]: string | undefined },
+    )
+
     return await execFile(runner, [path, ...castedArgs], {
         timeout: EXEC_TIMEOUT,
+        env: sanitizedEnv,
     })
 }
 

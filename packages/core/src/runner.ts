@@ -20,13 +20,26 @@ const GAME_ROOT = './branches/game'
 const P1_ROOT = '.'
 const P2_ROOT = './branches/player2'
 
+// DEBUG gates some secrets logging.
+const DEBUG_MODE = Boolean(process.env.DEBUG)
+
 function determineCurrentPlayer(turnCount: number): PlayerLabel {
     return turnCount % 2 ? PlayerLabel.P1 : PlayerLabel.P2
 }
 
 function generatePlayerState(currentPlayer: PlayerLabel, state: any): any {
+    const {
+        [PlayerLabel.P1]: p1Private,
+        [PlayerLabel.P2]: p2Private,
+        ...commonState
+    } = state.gameData
+
+    const privatePlayerState =
+        currentPlayer === PlayerLabel.P1 ? p1Private : p2Private
+
     return {
-        gameData: state.gameData,
+        ...privatePlayerState,
+        ...commonState,
         stash: state.playerStash[currentPlayer],
     }
 }
@@ -87,7 +100,7 @@ async function run(challengeContextPath: string) {
         isDone: false,
         gameData: {},
         gameSecrets: {},
-        playerStash: { [PlayerLabel.P1]: null, [PlayerLabel.P2]: null },
+        playerStash: {},
     }
 
     /*
@@ -98,6 +111,8 @@ async function run(challengeContextPath: string) {
     const runnerOutput = await runScript(
         context.gameDetails.runnerType,
         context.gameDetails.path,
+        undefined,
+        DEBUG_MODE,
     )
 
     const parsedInitRunnerOut: RunnerOutput = JSON.parse(runnerOutput.stdout)
@@ -132,10 +147,12 @@ async function run(challengeContextPath: string) {
         console.group(`Turn ${runnerState.turn}: ${playerName} plays`)
 
         const playerState = generatePlayerState(currentPlayer, runnerState)
+
         const { stdout: playerStdout } = await runScript(
             playerConfig.runnerType,
             playerConfig.runnerPath,
             [playerState],
+            DEBUG_MODE,
         )
 
         const parsedPlayerStdout: PlayerOutput = JSON.parse(playerStdout)
@@ -146,7 +163,7 @@ async function run(challengeContextPath: string) {
         console.log(`Active player: ${p1Config.runnerPath}`)
         console.log(`Turn output: ${playerStdout}`)
 
-        const { stdout: runnerStdout } = await runScript(
+        const { stdout: runnerStdout, stderr } = await runScript(
             context.gameDetails.runnerType,
             context.gameDetails.path,
             [
@@ -154,7 +171,10 @@ async function run(challengeContextPath: string) {
                 runnerState.gameData,
                 parsedPlayerStdout.action,
             ],
+            DEBUG_MODE,
         )
+
+        console.log(stderr)
 
         const parsedRunnerStdout: RunnerOutput = JSON.parse(runnerStdout)
 
@@ -168,7 +188,22 @@ async function run(challengeContextPath: string) {
         }
 
         console.log(`New game state: ${JSON.stringify(runnerState.gameData)}`)
+
+        if (DEBUG_MODE)
+            console.log(
+                `New game secrets: ${JSON.stringify(runnerState.gameSecrets)}`,
+            )
+
         console.groupEnd()
+
+        /*
+         * In the case where the game is a runaway (i.e. 50 turns without a
+         * conclusion), the game is declared a draw.
+         */
+        if (runnerState.turn >= 50) {
+            runnerState.isDone = true
+            runnerState.outcome = 'draw'
+        }
     }
     addMark('game-loop-end')
     const gameTime = timeBetween('game-loop-start', 'game-loop-end')

@@ -18,6 +18,8 @@ __metadata:
 "@codegames/games@workspace:packages/games":
   version: 0.0.0-use.local
   resolution: "@codegames/games@workspace:packages/games"
+  dependencies:
+    "@types/node": ^17.0.19
   languageName: unknown
   linkType: soft
 

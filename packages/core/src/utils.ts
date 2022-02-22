@@ -149,6 +149,7 @@ export async function runScript(
     runner: string,
     path: string,
     args?: (string | object)[],
+    debug?: boolean,
 ): Promise<{
     stdout: string
     stderr: string
@@ -159,6 +160,12 @@ export async function runScript(
 
             return arg
         }) ?? []
+
+    if (debug) {
+        console.group('runScript')
+        console.log(`Runner: ${runner}\nPath: ${path}\nArgs: ${castedArgs}`)
+        console.groupEnd()
+    }
 
     return await execFile(runner, [path, ...castedArgs], {
         timeout: EXEC_TIMEOUT,

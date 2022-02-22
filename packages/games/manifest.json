@@ -3,5 +3,10 @@
         "runnerType": "node",
         "path": "packages/games/numberGuessing/index.js",
         "description": "A basic number guessing game."
+    },
+    "capture-the-flag": {
+        "runnerType": "node",
+        "path": "packages/games/captureTheFlag/index.js",
+        "description": ""
     }
 }

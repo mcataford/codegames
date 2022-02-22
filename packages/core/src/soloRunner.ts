@@ -1,3 +1,9 @@
+/*
+ * The solo game runner runs the game using a single player's branch.
+ * The game being run is assumed to implement single-player winning
+ * conditions.
+ */
+
 import {
     collectBranch,
     getIssueComment,
@@ -5,44 +11,21 @@ import {
     runScript,
     setupTimers,
     upsertIssueComment,
-    writeJSON,
 } from './utils'
 import {
     Context,
-    PlayerConfigMap,
-    PlayerLabel,
+    GameOutcomes,
     PlayerOutput,
     RunnableConfig,
     RunnerOutput,
 } from './types'
+import { GAME_OUTCOME_MESSAGES } from './soloRunner.constants'
 
 const GAME_ROOT = './branches/game'
-const P1_ROOT = '.'
-const P2_ROOT = './branches/player2'
+const PLAYER_ROOT = '.'
 
 // DEBUG gates some secrets logging.
 const DEBUG_MODE = Boolean(process.env.DEBUG)
-
-function determineCurrentPlayer(turnCount: number): PlayerLabel {
-    return turnCount % 2 ? PlayerLabel.P1 : PlayerLabel.P2
-}
-
-function generatePlayerState(currentPlayer: PlayerLabel, state: any): any {
-    const {
-        [PlayerLabel.P1]: p1Private,
-        [PlayerLabel.P2]: p2Private,
-        ...commonState
-    } = state.gameData
-
-    const privatePlayerState =
-        currentPlayer === PlayerLabel.P1 ? p1Private : p2Private
-
-    return {
-        ...privatePlayerState,
-        ...commonState,
-        stash: state.playerStash[currentPlayer],
-    }
-}
 
 /*
  * run implements the game loop and manages the higher-level state of
@@ -53,27 +36,18 @@ async function run(challengeContextPath: string) {
     const context = await readJSON<Context>(challengeContextPath)
 
     addMark('pre-collect')
-    await Promise.all([
-        collectBranch(context.runnerBranch, GAME_ROOT),
-        collectBranch(context.challengeeBranch || '', P2_ROOT),
-    ])
+    await collectBranch(context.runnerBranch, GAME_ROOT)
 
-    const [p1Config, p2Config] = await Promise.all([
-        readJSON<RunnableConfig>(`${P1_ROOT}/player.config.json`),
-        readJSON<RunnableConfig>(`${P2_ROOT}/player.config.json`),
-    ])
-
-    const configs: PlayerConfigMap = {
-        [PlayerLabel.P1]: p1Config,
-        [PlayerLabel.P2]: p2Config,
-    }
+    const playerConfig = await readJSON<RunnableConfig>(
+        `${PLAYER_ROOT}/player.config.json`,
+    )
 
     addMark('post-collect')
     const postFetchCode = timeBetween('pre-collect', 'post-collect')
 
     const preFetchStatusUpdate = await getIssueComment(context)
 
-    const fetchStatusUpdate = `${preFetchStatusUpdate}\n:ballot_box_with_check: Fetch players and game branches (${postFetchCode}s)`
+    const fetchStatusUpdate = `${preFetchStatusUpdate}\n:ballot_box_with_check: Fetch player and game branches (${postFetchCode}s)`
 
     await upsertIssueComment(
         context.repoOwner,
@@ -87,16 +61,14 @@ async function run(challengeContextPath: string) {
      */
     const runnerState: {
         turn: number
-        winner: PlayerLabel | null
-        outcome: string | null
+        outcome: GameOutcomes
         isDone: boolean
         gameData: any
         gameSecrets: any
         playerStash: any
     } = {
         turn: 0,
-        winner: null,
-        outcome: null,
+        outcome: GameOutcomes.RUNNING,
         isDone: false,
         gameData: {},
         gameSecrets: {},
@@ -120,6 +92,7 @@ async function run(challengeContextPath: string) {
     runnerState.gameSecrets = parsedInitRunnerOut.gameSecrets ?? {}
     runnerState.gameData = parsedInitRunnerOut.gameData ?? {}
 
+    const playerName = context.challenger
     addMark('game-loop-start')
     while (!runnerState.isDone) {
         /*
@@ -137,30 +110,26 @@ async function run(challengeContextPath: string) {
          * in runner state.
          */
         runnerState.turn += 1
-        const currentPlayer = determineCurrentPlayer(runnerState.turn)
-        const playerConfig = configs[currentPlayer]
-        const playerName =
-            currentPlayer === PlayerLabel.P1
-                ? context.challenger
-                : context.challengee
 
         console.group(`Turn ${runnerState.turn}: ${playerName} plays`)
-
-        const playerState = generatePlayerState(currentPlayer, runnerState)
 
         const { stdout: playerStdout } = await runScript(
             playerConfig.runnerType,
             playerConfig.runnerPath,
-            [playerState],
+            [
+                {
+                    gameData: runnerState.gameData,
+                    stash: runnerState.playerStash,
+                },
+            ],
             DEBUG_MODE,
         )
 
         const parsedPlayerStdout: PlayerOutput = JSON.parse(playerStdout)
 
         // Update the player's stash with the lastest returned version.
-        runnerState.playerStash[currentPlayer] = parsedPlayerStdout.stash
+        runnerState.playerStash = parsedPlayerStdout.stash
 
-        console.log(`Active player: ${p1Config.runnerPath}`)
         console.log(`Turn output: ${playerStdout}`)
 
         const { stdout: runnerStdout, stderr } = await runScript(
@@ -169,6 +138,7 @@ async function run(challengeContextPath: string) {
             [
                 runnerState.gameSecrets,
                 runnerState.gameData,
+                'player',
                 parsedPlayerStdout.action,
             ],
             DEBUG_MODE,
@@ -184,7 +154,8 @@ async function run(challengeContextPath: string) {
             runnerState.gameData = parsedRunnerStdout.gameData
         if (parsedRunnerStdout.runnerState) {
             runnerState.isDone = parsedRunnerStdout.runnerState.done
-            runnerState.outcome = parsedRunnerStdout.runnerState.outcome
+            runnerState.outcome = parsedRunnerStdout.runnerState
+                .outcome as GameOutcomes
         }
 
         console.log(`New game state: ${JSON.stringify(runnerState.gameData)}`)
@@ -202,34 +173,19 @@ async function run(challengeContextPath: string) {
          */
         if (runnerState.turn >= 50) {
             runnerState.isDone = true
-            runnerState.outcome = 'draw'
+            runnerState.outcome = GameOutcomes.TIME_OUT
         }
     }
     addMark('game-loop-end')
     const gameTime = timeBetween('game-loop-start', 'game-loop-end')
 
-    let winner
-
-    if (runnerState.outcome !== 'draw')
-        winner =
-            runnerState.turn % 2 && runnerState.outcome === 'win'
-                ? context.challenger
-                : context.challengee
-
-    const summary = {
-        turnsPlayed: runnerState.turn,
-        outcome: runnerState.outcome,
-        winner,
-        gameTime,
-    }
-
-    const outcomeMessage = winner
-        ? `:tada::tada: ${winner} wins this round! :tada::tada:`
-        : ":sweat_smile: Womp womp. It's a draw!"
-
     const preSummaryStatusUpdate = await getIssueComment(context)
 
-    const summaryStatusUpdate = `${preSummaryStatusUpdate}\n:ballot_box_with_check: Run game (${gameTime}s)\n## Game summary\n### ${outcomeMessage}\n\`\`\`\nTurns played: ${summary.turnsPlayed}\n\`\`\``
+    const summaryStatusUpdate = `${preSummaryStatusUpdate}\n:ballot_box_with_check: Run game (${gameTime}s)\n## Game summary\n### ${
+        GAME_OUTCOME_MESSAGES[
+            runnerState.outcome as GameOutcomes.WIN | GameOutcomes.TIME_OUT
+        ]
+    }\n\`\`\`\nTurns played: ${runnerState.turn}\n\`\`\``
 
     await upsertIssueComment(
         context.repoOwner,
@@ -238,8 +194,6 @@ async function run(challengeContextPath: string) {
         summaryStatusUpdate,
         context.commentId,
     )
-
-    await writeJSON('./summary.json', summary)
 }
 
 /*

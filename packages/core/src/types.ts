@@ -1,6 +1,12 @@
 export enum RunnerType {
     node = 'node',
 }
+export enum GameOutcomes {
+    TIME_OUT = 'time_out',
+    WIN = 'win',
+    LOSS = 'loss',
+    RUNNING = 'running',
+}
 
 // FIXME: Dynamic typing using schemas?
 export interface PlayerOutput {
@@ -52,8 +58,8 @@ export interface Context {
     pullNumber: number
     challenger: string
     challengerBranch: string
-    challengee: string
-    challengeeBranch: string
+    challengee?: string
+    challengeeBranch?: string
     commentId?: number
     game: string
     gameDetails: GameDefinition

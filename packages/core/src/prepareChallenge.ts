@@ -2,7 +2,6 @@ import gamesManifest from '@codegames/games'
 
 import {
     ContextualizedError,
-    getBranchDetails,
     getPullDetails,
     upsertIssueComment,
     writeJSON,
@@ -10,7 +9,7 @@ import {
 import { Context, GameManifest, GitContext } from './types'
 
 const FAILED_TO_PARSE_ERR =
-    'Failed to parse challenge. The expected format is "I challenge `branch` at `game`.".'
+    'Failed to parse message. The expected format is "Let\'s play [game]".'
 const INVALID_GAME_ERR = 'Unrecognized game identifier.'
 /*
  * prepareChallenge gathers basic information about the challenge
@@ -24,11 +23,10 @@ async function prepareChallenge(
 ): Promise<void> {
     const [repoOwner, repoName] = repo.split('/')
 
-    const pattern =
-        /^(I|i) challenge (?<other>[A-Za-z0-9-/]+) at (?<game>([A-Za-z0-9-]+))$/
-    const match = challengeComment.match(pattern)?.groups
+    const soloPattern = /^(L|l)et's play (?<game>([A-Za-z0-9-]+))$/
+    const match = challengeComment.match(soloPattern)?.groups
 
-    if (!match?.other || !match?.game)
+    if (!match?.game)
         throw new ContextualizedError<GitContext>(FAILED_TO_PARSE_ERR, {
             repoOwner,
             repoName,
@@ -44,29 +42,22 @@ async function prepareChallenge(
             pullNumber,
         })
 
-    const [challengerDetails, challengeeDetails] = await Promise.all([
-        getPullDetails(repoOwner, repoName, pullNumber),
-        getBranchDetails(repoOwner, repoName, String(match.other)),
-    ])
-
-    const { author: challenger, branchName: challengerBranch } =
-        challengerDetails
-    const { author: challengee, branchName: challengeeBranch } =
-        challengeeDetails
-
+    const { author, branchName } = await getPullDetails(
+        repoOwner,
+        repoName,
+        pullNumber,
+    )
     console.group('Challenge summary')
 
-    const message = `# 💀 Two players enter the arena, only one will leave 💀\n## ${challenger}'s \`${challengerBranch}\` v. ${challengee}'s \`${challengeeBranch}\`\n:ballot_box_with_check: Prepare challenge`
+    const message = `# 🏁 A challenger appears 🏁\n## ${author}'s \`${branchName}\` playing \`${match.game}\`\n:ballot_box_with_check: Prepare challenge`
 
     const challengeData: Context = {
         pullNumber,
         repoName,
         repoOwner,
         runnerBranch,
-        challenger,
-        challengerBranch,
-        challengee,
-        challengeeBranch,
+        challenger: author,
+        challengerBranch: branchName,
         game: match.game,
         gameDetails,
     }

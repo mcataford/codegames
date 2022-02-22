@@ -23,32 +23,27 @@ interface GameSecrets {
 function initialize() {
     const grid: GameGrid = []
 
-    for (let y = 0; y < 5; y++) {
+    for (let y = 0; y < 4; y++) {
         grid.push([])
-        for (let x = 0; x < 5; x++) {
+        for (let x = 0; x < 4; x++) {
             grid[y].push(null)
         }
     }
 
-    const flagX = Math.floor(Math.random() * 5)
-    const flagY = Math.floor(Math.random() * 5)
+    const flagX = Math.floor(Math.random() * 3)
+    const flagY = Math.floor(Math.random() * 3)
 
     grid[flagY][flagX] = 'FLAG'
 
-    const p1X = Math.floor(Math.random() * 5)
-    const p1Y = Math.floor(Math.random() * 5)
-    const p2X = Math.floor(Math.random() * 5)
-    const p2Y = Math.floor(Math.random() * 5)
+    const p1X = Math.floor(Math.random() * 3)
+    const p1Y = Math.floor(Math.random() * 3)
 
     const pointsOfInterest = {
-        'player-1': [p1Y, p1X],
-        'player-2': [p2Y, p2X],
+        player: [p1Y, p1X],
         flag: [flagY, flagX],
     }
 
-    grid[p1Y][p1X] = 'P1'
-
-    grid[p2Y][p2X] = 'P2'
+    grid[p1Y][p1X] = 'player'
 
     console.log(JSON.stringify({ gameSecrets: { grid, pointsOfInterest } }))
 }
@@ -85,12 +80,20 @@ function applyAction(
 
     if (
         newPosition[0] < 0 ||
-        newPosition[0] >= 5 ||
+        newPosition[0] >= 3 ||
         newPosition[1] < 0 ||
-        newPosition[1] >= 5
-    )
+        newPosition[1] >= 3
+    ) {
         console.log(JSON.stringify({ gameSecrets }))
-    else {
+    } else if (gameSecrets.grid[newPosition[0]][newPosition[1]] === 'FLAG') {
+        console.log(
+            JSON.stringify({
+                gameData,
+                gameSecrets,
+                runnerState: { done: true, outcome: 'win' },
+            }),
+        )
+    } else {
         gameSecrets.grid[currentPosition[0]][currentPosition[1]] = null
         gameSecrets.grid[newPosition[0]][newPosition[1]] = currentPlayer
         gameSecrets.pointsOfInterest[currentPlayer] = newPosition
@@ -107,7 +110,8 @@ if (process.argv.length < 3) initialize()
 else {
     const gameSecrets = JSON.parse(process.argv[2])
     const gameData = JSON.parse(process.argv[3])
-    const playerAction = JSON.parse(process.argv[4])
+    const playerLabel = process.argv[4]
+    const playerAction = JSON.parse(process.argv[5])
 
-    applyAction(gameData, gameSecrets, 'player-1', playerAction)
+    applyAction(gameData, gameSecrets, playerLabel, playerAction)
 }

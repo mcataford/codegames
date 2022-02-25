@@ -1,0 +1,12 @@
+{
+    "action": "issue_comment",
+    "repository": {
+        "full_name": "mcataford/codegames"
+    },
+    "comment": {
+        "body": "Let's play capture-the-flag"
+    },
+    "issue": {
+        "number": 1
+    }
+}

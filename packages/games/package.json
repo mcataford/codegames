@@ -1,0 +1,9 @@
+{
+    "name": "@codegames/games",
+    "scripts": {
+        "build": "tsc --project $PWD/packages/games"
+    },
+    "devDependencies": {
+        "@types/node": "^17.0.19"
+    }
+}

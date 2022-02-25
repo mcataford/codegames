@@ -1,0 +1,51 @@
+# Challenge workflow
+# 
+# This workflow handles manually-triggered 1v1 challenges.
+
+on: [issue_comment]
+
+jobs: 
+  prepare:
+    runs-on: ubuntu-latest
+    name: Prepare
+    steps:
+      - run: npm install -g yarn
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - uses: actions/cache@v2
+        id: dep-cache
+        with:
+          path: .yarn
+          key: ${{ runner.os }}-${{ hashFiles( 'yarn.lock' ) }}
+      - name: Setup dependencies
+        if: steps.dep-cache.outputs.cache-hit != 'true'
+        run: yarn
+  play:
+    runs-on: ubuntu-latest
+    name: Let's play!
+    needs: prepare
+    env:
+      RUNNER_BRANCH: 'feat/mvp'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - run: npm install -g yarn
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16
+      - uses: actions/cache@v2
+        id: dep-cache
+        with:
+          path: .yarn
+          key: ${{ runner.os }}-${{hashFiles( 'yarn.lock' )}}
+      - run: | 
+          yarn
+          yarn build
+          yarn node packages/core/dist/prepareChallenge.js ${{ github.event.repository.full_name }} ${{ env.RUNNER_BRANCH }} ${{ github.event.issue.number }} "${{ github.event.comment.body }}"
+          yarn node packages/core/dist/soloRunner.js ./challengeContext.json
+        env:
+          DEBUG: "true"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

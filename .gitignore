@@ -1,3 +1,18 @@
+# Internal artifacts
+summary.json
+challengeContext.json
+challenge.json
+**packages/**/*.js
+
+# Yarn
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
 # Logs
 logs
 *.log

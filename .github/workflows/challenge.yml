@@ -11,7 +11,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Prepare
     steps:
-      - run: echo ${{ github.event.sender.login }}
       - run: npm install -g yarn
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2

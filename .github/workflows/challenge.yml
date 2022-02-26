@@ -27,7 +27,7 @@ jobs:
     name: Let's play!
     needs: prepare
     env:
-      RUNNER_BRANCH: 'feat/mvp'
+      RUNNER_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - uses: actions/checkout@v2
         with:

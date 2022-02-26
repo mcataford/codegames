@@ -2,14 +2,16 @@
 # 
 # This workflow handles manually-triggered 1v1 challenges.
 
-on: [issue_comment]
+on:
+  issue_comment:
+      types: created
 
 jobs:
   prepare:
     runs-on: ubuntu-latest
     name: Prepare
-    if: github.actor != 'github-actions'
     steps:
+      - run: echo ${{ github.event.sender.login }}
       - run: npm install -g yarn
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
